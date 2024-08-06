@@ -10,7 +10,8 @@
       "name": "Debug",
       "program": "${workspaceFolder}/bin/interpreter",
       "args": [],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "terminal": "external"
     }
   ]
 }

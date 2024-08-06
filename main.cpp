@@ -1,5 +1,6 @@
 #include <cctype>
 #include <deque>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -218,16 +219,46 @@ sptr<Value> plot(Plotter &plotter, Args args) {
     // y intercept for a linear plot should be half of the height of the graph?
     auto b = 0; // plotter.buffer.size() / 2;
 
-    // why does this go end -> start?
-    auto slope = (end->x - start->x) / (end->y - start->y);
+    auto run = end->x - start->x;
+    auto rise = end->y - start->y;
 
-    for (int y = start->y; y < end->y; ++y) {
-      for (int x = start->x; x < end->x; ++x) {
-        auto y_value = slope * x + b;
-        if (y_value == y)
-          plotter.buffer[y][x] = character[0];
+    if (
+      run == 0 && rise == 0 ||
+      plotter.buffer.size() == 0 ||
+      plotter.buffer[0].size() == 0
+    ) {
+      return;
+    }
+
+    auto y_size = plotter.buffer.size();
+    auto x_size = plotter.buffer[0].size();
+
+    if (std::abs(rise) > std::abs(run)) {
+      float slope = float(run) / float(rise);
+      float x_intercept = float(start->x)  - (slope * float(start->y));
+      auto start_y = std::min(start->y, end->y);
+      auto end_y = std::max(start->y, end->y);
+      for (int y = start_y; y < end_y; ++y) {
+        int x = slope * (float)y + x_intercept;
+        if (y < 0 || y >= y_size || x < 0 || x >= x_size) {
+          continue;
+        }
+        plotter.buffer[y][x] = character[0];
+      }
+    } else {
+      float slope = float(rise) / float(run);
+      float y_intercept = float(start->y) - (slope * float(start->x));
+      auto start_x = std::min(start->x, end->x);
+      auto end_x = std::max(start->x, end->x);
+      for (int x = start_x; x < end_x; ++x) {
+        int y = slope * (float)x + y_intercept;
+        if (y < 0 || y >= y_size || x < 0 || x >= x_size) {
+          continue;
+        }
+        plotter.buffer[y][x] = character[0];
       }
     }
+
   };
 
   const auto exponential = [&]() {
@@ -260,7 +291,7 @@ sptr<Value> set_size(Plotter &plotter, Args args) {
   auto size_y = std::dynamic_pointer_cast<Integer>(args[1])->value;
   for (auto y = 0; y < size_y; ++y) {
     std::vector<char> x_buf;
-    for (auto x = 0; x < size_y; ++x) {
+    for (auto x = 0; x < size_x; ++x) {
       x_buf.push_back(plotter.bg_char);
     }
     plotter.buffer.push_back(x_buf);
@@ -546,6 +577,25 @@ begin:
 
     if (s == "exec") {
       break;
+    }
+
+    if (s == "file") {
+      std::cout << "Enter file name:\n";
+      std::string s;
+      std::getline(std::cin, s);
+      std::ifstream file(s);
+      if (file.is_open()) {
+        std::stringstream ss;
+        std::string line;
+        while (std::getline(file, line)) {
+          ss << line << std::endl;
+        }
+        input += ss.str();
+        file.close();
+      } else {
+        std::cerr << "file read err, probably doesnt exist.\n";
+      }
+      continue;
     }
 
     if (s.back() != ';')
